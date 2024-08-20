@@ -9,7 +9,7 @@ make build
 xhost +local:docker
 ```
 
-## Run the docker image with the SDK proviede by YDLIDAR https://www.ydlidar.com/service_support/download.html?gid=23
+## Run the docker image with the SDK provided by YDLIDAR https://www.ydlidar.com/service_support/download.html?gid=23
 ```bash
 docker run -it --rm --privileged -v /tmp/.X11-unix:/tmp/.X11-unix:ro \
     -e DISPLAY=$DISPLAY --net=host ros:noetic-ydlidar-os30a
