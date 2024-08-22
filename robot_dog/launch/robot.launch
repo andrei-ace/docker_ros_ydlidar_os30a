@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- Stream format -->
+  <arg name="base_frame" value="dm_base_frame" />
+
+  <!-- Stream format -->
+  <arg name="stream_mjpg"       default="0" />
+  
+  <!-- depth type -->
+  <arg name="depth_raw"               default="0" />
+  <arg name="depth_gray"              default="1" />
+  <arg name="depth_colorful"          default="2" />
+  
+  <!-- vedio mode type -->
+  <arg name="rect_color_and_scale_down_depth" default="36"/><!--half depth resolution-->
+
+  
+  <arg name="camera1" value="BMVM0S30A1" />
+  <arg name="camera2" value="BMVM0S30A2" />
+  <arg name="camera3" value="BMVM0S30A3" />
+  <arg name="camera4" value="BMVM0S30A4" />
+  <arg name="camera5" value="BMVM0S30A5" />
+
+  <arg name="camera1sn" value="00000001" />
+  <arg name="camera2sn" value="00000002" />
+  <arg name="camera3sn" value="00000003" />
+  <arg name="camera4sn" value="00000004" />
+  <arg name="camera5sn" value="00000005" />
+
+    <include file="$(find dm_preview)/launch/dm_preview.launch">
+     <arg name="module_name" value="$(arg camera1)" />
+     <arg name="tf_prefix" value="$(arg camera1)" />
+     <!--<arg name="dev_serial_number" value="$(arg camera1sn)" />-->
+     <arg name="color_width" value="1280" />
+     <arg name="color_height" value="920" />
+     <arg name="depth_width" value="640" />
+     <arg name="depth_height" value="460" />
+     <arg name="framerate" default="30" />
+     <arg name="depth_type" default="$(arg depth_gray)" />
+     <arg name="video_mode_type" default="$(arg rect_color_and_scale_down_depth)" />
+     <arg name="color_stream_format" value="$(arg stream_mjpg)" />
+     <arg name="depth_maximum_mm" value="1000" />    
+     <arg name="ir_intensity" default="3" />         
+     <arg name="colorful_pointcloud" value="false" /><!-- set true will increase loading,rviz need resubscribe topic-->
+     <arg name="enable_depth_decimation_filter" value="false" /><!--scale down depth and point cloud's density,reduce loading-->
+     <arg name="depth_decimation_filter_rate" value="2" /> <!--must set 2,4,8,16...-->
+    </include>
+
+    
+    <include file="$(find yolo_detector_ros)/launch/yolo_detector.launch">
+      <arg name="weights" value="/yolov8n_ncnn_model" />
+      <arg name="input_image_topic" value="/dm_preview/BMVM0S30A1/left/image_color" />
+      <arg name="output_image_topic" value="/dm_preview/BMVM0S30A1/left/image_color_annotated" />
+      <arg name="output_topic" value="/yolo_detector/detections" />
+      <arg name="publish_image" value="true" />
+      <arg name="confidence_threshold" value="0.5" />
+      <arg name="maximum_detections" value="10" />
+      <arg name="verbose" value="false" />
+    </include>
+    
+
+    <node pkg="tf" type="static_transform_publisher" name="point_cloud_$(arg camera1)_broadcaster"
+        args="0 0.03 0 -1.57 0 -1.57 $(arg base_frame) $(arg camera1)_left_color_frame 30" />
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find robot_dog)/rviz/robot.rviz" output="screen"/>  
+</launch>

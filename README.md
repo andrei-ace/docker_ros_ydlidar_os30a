@@ -31,3 +31,11 @@ docker run -it --rm --privileged -v /tmp/.X11-unix:/tmp/.X11-unix:ro \
 source /eys3d_ros/devel/setup.bash
 roslaunch dm_preview BMVM0S30A.launch
 ```
+
+## Run the whole thing
+```bash
+xhost +local:docker
+docker run -it --rm --privileged -v /tmp/.X11-unix:/tmp/.X11-unix:ro     \
+    -e DISPLAY=$DISPLAY --net=host andreiciobanu1984/robots:robot-dog-3d-depth-camera /bin/bash \
+    -c 'source /robot/devel/setup.bash; roslaunch robot_dog robot.launch'
+```

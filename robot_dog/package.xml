@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>robot_dog</name>
+  <version>0.0.0</version>
+  <description>Robot dog</description>
+
+  <maintainer email="andrei.ciobanu1984@gmail.com">Andrei Ciobanu</maintainer>
+  <license>Apache</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>dm_preview</depend>
+  <depend>yolo_detector_ros</depend>
+</package>
