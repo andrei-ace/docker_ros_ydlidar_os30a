@@ -29,6 +29,4 @@ def callback(data):
 
 
 rospy.Subscriber("/dm_preview/BMVM0S30A1/left/image_color", Image, callback, queue_size=1)
-
-while True:
-    rospy.spin()
+rospy.spin()
