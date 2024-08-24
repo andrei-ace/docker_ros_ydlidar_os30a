@@ -17,6 +17,9 @@
     <!-- Output verbose info -->
     <arg name="verbose" default="false" />
 
+    <!-- Detection rate (Hz, 0 means process every frame) -->
+    <arg name="detection_rate" default="0.0" />
+
     <node pkg="yolo_detector_ros" name="detect" type="detect.py" output="screen">
         <param name="weights" value="$(arg weights)" />
         <param name="confidence_threshold" value="$(arg confidence_threshold)" />
@@ -28,6 +31,7 @@
         <param name="publish_image" value="$(arg publish_image)" />
         <param name="output_image_topic" value="$(arg output_image_topic)" />
         <param name="verbose" value="$(arg verbose)" />
+        <param name="detection_rate" value="$(arg detection_rate)" />
     </node>
 
 </launch>

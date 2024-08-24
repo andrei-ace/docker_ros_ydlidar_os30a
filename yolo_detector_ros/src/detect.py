@@ -28,11 +28,11 @@ class YoloDetector:
 
         if self.compressed_input:
             self.image_sub = rospy.Subscriber(
-                input_image_topic, CompressedImage, self.callback, queue_size=1
+                input_image_topic, CompressedImage, self.image_callback, queue_size=1
             )
         else:
             self.image_sub = rospy.Subscriber(
-                input_image_topic, Image, self.callback, queue_size=1
+                input_image_topic, Image, self.image_callback, queue_size=1
             )
 
         # Initialize prediction publisher
@@ -47,44 +47,67 @@ class YoloDetector:
             )
         self.verbose = rospy.get_param("~verbose")
 
-    def callback(self, data):
-        """Callback function to process image and publish detected classes."""
-        array = ros_numpy.numpify(data)
+        self.detection_rate = rospy.get_param("~detection_rate", 0.0)  # in Hz, 0 means process every frame
+        self.last_image = None
+
+        if self.detection_rate > 0:
+            rospy.Timer(rospy.Duration(1.0 / self.detection_rate), self.timer_callback)
+        else:
+            rospy.Timer(rospy.Duration(0.01), self.timer_callback)  # 100 Hz timer for immediate processing
+
+    def image_callback(self, data):
+        """Store the most recent image."""
+        self.last_image = data
+
+    def timer_callback(self, event):
+        """Process the most recent image at the specified rate."""
+        if self.last_image is not None:
+            self.process_image(self.last_image)
+            self.last_image = None  # Reset to avoid processing the same image twice
+
+    def process_image(self, data):
+        """Process image and publish detected classes."""
+        try:
+            array = ros_numpy.numpify(data)
+            
+            pred = self.model(array, 
+                              conf=self.conf_thres,
+                              iou=self.iou_thres,                         
+                              max_det=self.max_det, 
+                              agnostic_nms=self.agnostic_nms,
+                              verbose=self.verbose
+                              )    
+            
+            bounding_boxes = BoundingBoxes()
+            bounding_boxes.header = data.header
+            bounding_boxes.image_header = data.header
         
-        pred = self.model(array, 
-                          conf=self.conf_thres,
-                          iou=self.iou_thres,                         
-                          max_det = self.max_det, 
-                          agnostic_nms=self.agnostic_nms,
-                          verbose=self.verbose
-                          )    
+            for result in pred:
+                for box in result.boxes:
+                    bounding_box = BoundingBox()
+                    c = int(box.cls)
+                    bounding_box.Class = result.names[c]
+                    bounding_box.probability = float(box.conf.item())
+                    bounding_box.xmin = int(box.xyxy[0,0].item())
+                    bounding_box.ymin = int(box.xyxy[0,1].item())
+                    bounding_box.xmax = int(box.xyxy[0,2].item())
+                    bounding_box.ymax = int(box.xyxy[0,3].item())
+
+                    bounding_boxes.bounding_boxes.append(bounding_box)
+
+                if self.publish_image:
+                    im_bgr = result.plot()
+                    img_msg = ros_numpy.msgify(Image, im_bgr, encoding=data.encoding)
+                    img_msg.header = data.header
+                    self.image_pub.publish(img_msg)
+
+            self.pred_pub.publish(bounding_boxes)
+            
+            if self.verbose:
+                rospy.loginfo(f"Published {len(bounding_boxes.bounding_boxes)} detections")
         
-        bounding_boxes = BoundingBoxes()
-        bounding_boxes.header = data.header
-        bounding_boxes.image_header = data.header
-    
-        for result in pred:
-            # print(result.boxes)
-            for box in result.boxes:
-                bounding_box = BoundingBox()
-                c = int(box.cls)
-                # Fill in bounding box message
-                bounding_box.Class = result.names[c]
-                bounding_box.probability = box.conf.item()
-                bounding_box.xmin = int(box.xyxy[0,0].item())
-                bounding_box.ymin = int(box.xyxy[0,1].item())
-                bounding_box.xmax = int(box.xyxy[0,2].item())
-                bounding_box.ymax = int(box.xyxy[0,3].item())
-
-                bounding_boxes.bounding_boxes.append(bounding_box)
-
-            if self.publish_image:
-                im_bgr = result.plot()                
-                self.image_pub.publish(ros_numpy.msgify(Image, im_bgr, encoding="rgb8"))
-
-        # Publish prediction
-        self.pred_pub.publish(bounding_boxes)
-                
+        except Exception as e:
+            rospy.logerr(f"Error in YoloDetector process_image: {str(e)}")
 
 
 if __name__ == "__main__":    
